@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+  <head>
+
+    <title>Analisador Léxico</title>
+
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/bootstrap.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link href="assets/css/font-awesome.css" rel="stylesheet">
+
+  </head>
+  
+  <body>
+
+    <div class="card-header">
+      <nav class="navbar navbar-toggleable-md navbar-light bg-faded">
+        <a class="navbar-brand" href="#"><h4 style="font-size: 2.5vw">Analisador Léxico</h4></a>
+        <div>
+          <img class="d-inline-block align-top img-fluid" id="logo" src="http://www.uri.com.br/mobile/images/logo_uri.png" width="175" height="35"  alt="logo uri">
+        </div>
+      </nav>
+    </div>
+   
+    <main class="content">
+      <form style="width: 70%;">
+        <div class="form-group">
+          
+        </div>
+        <div class="container-fluid" style="display: -webkit-inline-box; padding: 0%">
+          <input id="word" type="text" class="form-control w-50" value="" placeholder="Adicionar Tokens">
+          <button id="addWord" class="btn btn-success btn-sm" onclick="addWordTocollection();">Add </button>
+          <button id="buttonClear" class="btn btn-danger btn-sm" onclick="removeWord();">Remove all</button>
+        </div>
+        <p id="warning-input"></p>
+        
+      </div>
+      <div class="form-group">
+        <table class="list-group">
+          <hr>
+          <caption>Palavras:
+            <tbody id="listWords"></tbody>
+          </caption>
+          
+        </table>
+        <hr>
+      </div>
+      <div class="form-group">
+        <input type="text" id="validate" placeholder="Validar Tokens" class="form-control" autocomplete="off"/>
+      </div>
+    </form>
+
+    <table class="table" id="table"></table>
+
+  </main>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+  <script>
+    
+    var collection = [];
+    var valuesGlobal = 0;
+    var table = [];
+    var values = [[]];
+    
+    $("form").submit( (e) => {
+        e.preventDefault();
+    });
+
+    $(document).ready(function(){
+      
+      trimTable();
+      
+      $('#validate').keyup( (e) => {
+
+        tokenValidate( $('#validate').val().toLowerCase(), (e.keyCode == 8 ) ? true : false );
+        
+      });
+    });
+
+    function trimTable(){
+
+      values = [[]];
+      next = 0;
+      table = [];
+
+      montaEstado();
+
+      table = generateLines();
+
+      tableInsertDados(table);
+    }
+
+    function addWordTocollection () {
+        var value = $("#word").val().toLowerCase().replace(/\s/g, '');
+
+        if(value === ""){
+          $('#word').addClass('error');
+          setTimeout(function(){
+            $('#word').removeClass('error');
+          }, 2000);
+        } else {
+          var addNext = true;
+    
+          for (var i = 0; i < value.length; i++) {
+            if( (value[i] < 'a' || value[i] > 'z') || value[i] === ' ') {
+              $('#word').addClass('error');
+              $('#warning-input').prepend("Insira somente caracteres entre 'a' e 'z'");
+              setTimeout(function(){
+                $('#warning-input').empty();
+                $('#word').removeClass('error');
+              }, 2000);
+              addNext = false;
+              break;
+            }
+          }
+          
+          if (addNext) {
+            
+            var exists = false;
+                        
+            if( collection.indexOf(value) === -1 ){
+              $('#listWords').append("<th class='badge badge-pill badge-dark' style = 'margin-left: 4px' >" + value + "</th>");
+              collection.push(value);
+            }
+           
+            $("#word").val("");
+          }
+        }
+
+        $('#table').empty();
+
+        trimTable();
+    }
+
+    function removeWord (e) {
+      $('#word').val("");
+      $('#validate').val("").removeClass('correct error');
+      collection = [];
+      $('#listWords').empty();
+      $('#table').empty();
+      trimTable();
+    }
+
+    function montaEstado(){
+      
+      for (var i = 0; i < collection.length; i++) {
+        var actualState = 0;
+        var word = collection[i];
+        
+        for(var j = 0; j < word.length; j++){
+          if(typeof values[actualState][word[j]] === 'undefined'){
+            var nextState = next + 1;
+            values[actualState][word[j]] = nextState;
+            values[nextState] = [];
+            next = actualState = nextState;
+          } else {
+            actualState = values[actualState][word[j]];
+          }
+          if(j == word.length - 1){
+            values[actualState]['final'] = true;
+          }
+        }
+      }
+    }
+
+    function generateLines(){
+      var vectorvalues = [];
+      
+      for (var i = 0; i < values.length; i++) {
+        var aux = [];
+        aux['estado'] = i;
+        
+        for (var j = 'a'.charCodeAt(); j <= 'z'.charCodeAt(); j++) {
+          var letter = String.fromCharCode(j);
+          if(typeof values[i][letter] === 'undefined'){
+            aux[letter] = '-'
+          } else {
+            aux[letter] = values[i][letter]
+          }
+        }
+        if(typeof values[i]['final'] !== 'undefined'){
+          aux['final'] = true;
+        }
+        vectorvalues.push(aux);
+      };
+      
+      return vectorvalues;
+    }
+    
+    function tableInsertDados(vectorvalues){
+
+      var tableContent = $('#table');
+
+      tableContent.append("<thead>");
+      $("thead").append("<tr> <th scope='col'>☺</th></tr>");
+
+    for (var i = 'a'.charCodeAt(); i <= 'z'.charCodeAt(); i++) {
+        $("thead tr").append('<th scope="col">' + String.fromCharCode(i) + '</th>').css('font-size','1.6vw');
+      }
+
+      var tbody = $(document.createElement('tbody'));
+      tableContent.append(tbody);
+      
+      for(var i = 0; i < vectorvalues.length; i++){
+        var tr = $(document.createElement('tr'));
+        var td = $(document.createElement('td'));
+        
+        if(vectorvalues[i]['final']){
+          td.html('q' + vectorvalues[i]['estado'] + '*');
+          tr.append('<th scope="row" style="font-size:1.6vw;width: 35px;">q' + vectorvalues[i]['estado'] + '*</th>').addClass('state_'+vectorvalues[i]['estado']);
+        } else {
+          td.html('q' + vectorvalues[i]['estado']);
+          tr.append('<th scope="row" style="font-size:1.6vw;width: 35px;">q' + vectorvalues[i]['estado'] + '</th>').addClass('state_'+vectorvalues[i]['estado']);
+        }
+      
+        for (var j = 'a'.charCodeAt(); j <= 'z'.charCodeAt(); j++) {
+          var letter = String.fromCharCode(j);
+          var td = $( document.createElement('td') );
+          td.addClass('letter_'+letter);
+          if(vectorvalues[i][letter] != '-'){
+            td.html('q' + vectorvalues[i][letter]).css('font-size','1.6vw');
+          } else {
+            td.html('-');
+          }
+          tr.append( td );
+        }
+        tableContent.append(tr);
+      }
+    }
+
+    function tokenValidate(words, backspace){
+      
+      if(backspace){
+        $('#table').empty();
+        trimTable();
+      }
+
+      var state = 0;
+      if(words.length == 0){
+        $('#validate').removeClass('correct');
+        $('#validate').removeClass('error');
+        $('#table tr').removeClass('selectedStatus');
+        $('#table td').removeClass('selectedField');
+        $('#table .state_' + state).removeClass('selectedStatusFalse');
+        $('#table .letter_' + words[i]).removeClass('selectedFieldFalse');
+      }
+      
+      for (var i = 0; i < words.length; i++) {
+        
+        if(words[i] >= 'a' && words[i] <= 'z'){
+          $('#table tr').removeClass('selectedStatus');
+          $('#table td').removeClass('selectedField');
+          $('#table .state_' + state).addClass('selectedStatus');
+          $('#table .letter_' + words[i]).addClass('selectedField');
+          
+          if(table[state][words[i]] != '-'){
+            $('#table .state_' + state).addClass('selectedStatus');
+            $('#table .letter_' + words[i]).addClass('selectedField');
+            state = table[state][words[i]];
+            $('#validate').addClass('correct');
+            $('#validate').removeClass('error');
+            $('#table .state_' + state).removeClass('selectedStatusFalse');
+            $('#table .letter_' + words[i]).removeClass('selectedFieldFalse');
+            $('#table .state_' + state).removeClass('selectedStatusSpace');
+            $('#table .letter_' + words[i]).removeClass('selectedFieldSpace');
+          } else {
+            $('#table .state_' + state).addClass('selectedStatusFalse');
+            $('#table .letter_' + words[i]).addClass('selectedFieldFalse');
+            $('#validate').removeClass('correct');
+            $('#validate').addClass('error');
+            break;
+          }
+        } else if(words[i] == ' '){
+          $('#table tr').removeClass('selectedStatus');
+          $('#table td').removeClass('selectedField');
+          $('#table .state_' + state).addClass('selectedStatusSpace');
+          $('#table .letter_' + words[i]).addClass('selectedFieldSpace');
+          if(table[state]['final']){
+            state = 0;
+          } else {
+            $('#table .state_' + state).removeClass('selectedStatusSpace');
+            $('#table .letter_' + words[i]).removeClass('selectedFieldSpace');
+            $('#validate').removeClass('correct');
+            $('#validate').addClass('error');
+            break;
+          }
+        } else {
+          $('#validate').removeClass('correct');
+          $('#validate').addClass('error');
+          break;
+        }
+      };
+    }
+
+  </script>
+  </body>
+</html>
